@@ -262,10 +262,6 @@ fun AddScreen(db: Db, onSaved: (Int) -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var cameraUri by remember { mutableStateOf<Uri?>(null) }
 
-    LaunchedEffect(Unit) {
-        if (number.isEmpty()) number = db.nextBoxNumber().toString()
-    }
-
     fun process(uri: Uri) {
         busy = true
         scope.launch {
@@ -297,12 +293,31 @@ fun AddScreen(db: Db, onSaved: (Int) -> Unit) {
 
     val n = number.toIntOrNull()
     val exists = n != null && db.boxExists(n)
+    val usedNumbers = db.allBoxes().map { it.number }
     val preview = remember(pending) { pending?.let { loadBitmap(it, 1200) } }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
     ) {
         Text("Add a box", style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = number,
+            onValueChange = { number = it.filter { c -> c.isDigit() }.take(5) },
+            label = { Text("Box number (you choose)") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+        if (exists) {
+            Text(
+                "Box $number already exists. Saving will replace its photo and models.",
+                color = MaterialTheme.colorScheme.error
+            )
+        } else if (usedNumbers.isNotEmpty()) {
+            Text("Already used: " + usedNumbers.joinToString(", "), fontSize = 12.sp)
+        }
         Spacer(Modifier.height(12.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -335,22 +350,6 @@ fun AddScreen(db: Db, onSaved: (Int) -> Unit) {
                 contentScale = ContentScale.Fit
             )
 
-            Spacer(Modifier.height(16.dp))
-            OutlinedTextField(
-                value = number,
-                onValueChange = { number = it.filter { c -> c.isDigit() }.take(5) },
-                label = { Text("Box number (the number written on the box)") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-            if (exists) {
-                Text(
-                    "Box $number already exists. Saving will replace its photo and models.",
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 value = text,
@@ -360,6 +359,9 @@ fun AddScreen(db: Db, onSaved: (Int) -> Unit) {
             )
 
             Spacer(Modifier.height(16.dp))
+            if (n == null || n <= 0) {
+                Text("Enter a box number at the top to save.", color = MaterialTheme.colorScheme.error)
+            }
             Button(
                 enabled = !busy && n != null && n > 0,
                 modifier = Modifier.fillMaxWidth(),
@@ -374,7 +376,7 @@ fun AddScreen(db: Db, onSaved: (Int) -> Unit) {
                         db.saveBox(num, dest.absolutePath, parseModels(text))
                         pending = null
                         text = ""
-                        number = db.nextBoxNumber().toString()
+                        number = ""
                         Toast.makeText(ctx, "Saved box $num", Toast.LENGTH_SHORT).show()
                         onSaved(num)
                     }
@@ -385,7 +387,7 @@ fun AddScreen(db: Db, onSaved: (Int) -> Unit) {
             Text(
                 "1. Photograph the box so the list of phone models is readable.\n" +
                     "2. Check the models the app read.\n" +
-                    "3. Enter the number you wrote on the box and save."
+                    "3. Save. The box number is whatever you typed above."
             )
         }
     }
