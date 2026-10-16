@@ -79,7 +79,7 @@ suspend fun recognizeText(file: File): String = suspendCancellableCoroutine { co
 
 /** Turns OCR output (or hand-typed text) into one model name per entry. */
 fun parseModels(text: String): List<String> =
-    text.split('\n', ',', ';', '/', '|', '•', '·')
+    text.split('\n', ',', ';', '/', '\\', '|', '•', '·')
         .map { it.trim().trim('-', '.', ':', '*', '(', ')').replace(Regex("\\s+"), " ") }
         .filter { it.length >= 2 && it.any { c -> c.isLetterOrDigit() } }
         .distinct()
