@@ -109,8 +109,9 @@ fun FindScreen(db: Db, version: Int, onOpen: (Int) -> Unit) {
 // ---------------------------------------------------------------- Boxes list
 
 @Composable
-fun BoxesScreen(db: Db, version: Int, onOpen: (Int) -> Unit) {
+fun BoxesScreen(db: Db, version: Int, onOpen: (Int) -> Unit, onChanged: () -> Unit) {
     val boxes = remember(version) { db.allBoxes() }
+    var toDelete by remember { mutableStateOf<BoxInfo?>(null) }
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text("All boxes (${boxes.size})", style = MaterialTheme.typography.titleLarge)
@@ -134,15 +135,34 @@ fun BoxesScreen(db: Db, version: Int, onOpen: (Int) -> Unit) {
                                 Spacer(Modifier.size(72.dp))
                             }
                             Spacer(Modifier.width(16.dp))
-                            Column {
+                            Column(Modifier.weight(1f)) {
                                 Text("Box ${b.number}", fontSize = 22.sp, fontWeight = FontWeight.Bold)
                                 Text("${b.modelCount} models")
                             }
+                            TextButton(onClick = { toDelete = b }) { Text("Delete") }
                         }
                     }
                 }
             }
         }
+    }
+
+    val target = toDelete
+    if (target != null) {
+        AlertDialog(
+            onDismissRequest = { toDelete = null },
+            title = { Text("Delete box ${target.number}?") },
+            text = { Text("The photo and its model list will be removed from this phone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    File(target.imagePath).delete()
+                    db.deleteBox(target.number)
+                    toDelete = null
+                    onChanged()
+                }) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { toDelete = null }) { Text("Cancel") } }
+        )
     }
 }
 
@@ -164,6 +184,11 @@ fun BoxDetailScreen(db: Db, number: Int, onChanged: () -> Unit, onClose: () -> U
             TextButton(onClick = onClose) { Text("← Back") }
         }
         Text("Take it from BOX $number", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(onClick = { editing = true }) { Text("Edit models") }
+            OutlinedButton(onClick = { confirmDelete = true }) { Text("Delete box") }
+        }
         Spacer(Modifier.height(12.dp))
 
         if (bitmap != null) {
@@ -179,12 +204,6 @@ fun BoxDetailScreen(db: Db, number: Int, onChanged: () -> Unit, onClose: () -> U
         Text("Models in this box (${models.size})", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(4.dp))
         models.forEach { Text("• $it") }
-
-        Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = { editing = true }) { Text("Edit models") }
-            OutlinedButton(onClick = { confirmDelete = true }) { Text("Delete box") }
-        }
     }
 
     if (editing) {

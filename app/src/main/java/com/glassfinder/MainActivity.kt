@@ -69,7 +69,7 @@ fun App(db: Db) {
             } else {
                 when (tab) {
                     0 -> FindScreen(db, version) { openBox = it }
-                    1 -> BoxesScreen(db, version) { openBox = it }
+                    1 -> BoxesScreen(db, version, onOpen = { openBox = it }, onChanged = { version++ })
                     else -> AddScreen(db) { saved ->
                         version++
                         openBox = saved
